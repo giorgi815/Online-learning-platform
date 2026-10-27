@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="OLP.Application/OLP.Application.csproj" />
+  <Project Path="OLP.Domain/OLP.Domain.csproj" />
+  <Project Path="OLP.Infrastructure/OLP.Infrastructure.csproj" />
+  <Project Path="OLP/OLP.csproj" />
+</Solution>
