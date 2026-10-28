@@ -15,16 +15,6 @@ namespace OLP
 
             builder.Services.AddControllers();
 
-            // Identity configuration
-            builder.Services
-            .AddIdentity<ApplicationUser, IdentityRole<Guid>>()
-            .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
-
-            //Database configuration
-            builder.Services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
             var app = builder.Build();
 
             app.UseHttpsRedirection();
