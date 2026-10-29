@@ -233,7 +233,8 @@ namespace OLP.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(3000)
+                        .HasColumnType("nvarchar(3000)");
 
                     b.Property<DateTime>("DueDate")
                         .HasColumnType("datetime2");
@@ -244,13 +245,17 @@ namespace OLP.Infrastructure.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("Assignments");
+                    b.ToTable("Assignments", t =>
+                        {
+                            t.HasCheckConstraint("CK_Assignment_MaxScore", "[MaxScore] > 0");
+                        });
                 });
 
             modelBuilder.Entity("OLP.Domain.Entities.Course", b =>
@@ -267,7 +272,8 @@ namespace OLP.Infrastructure.Migrations
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(3000)
+                        .HasColumnType("nvarchar(3000)");
 
                     b.Property<int>("Duration")
                         .HasColumnType("int");
@@ -284,7 +290,8 @@ namespace OLP.Infrastructure.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.HasKey("Id");
 
@@ -292,7 +299,14 @@ namespace OLP.Infrastructure.Migrations
 
                     b.HasIndex("TeacherId");
 
-                    b.ToTable("Courses");
+                    b.ToTable("Courses", t =>
+                        {
+                            t.HasCheckConstraint("CK_Course_Duration", "[Duration] > 0");
+
+                            t.HasCheckConstraint("CK_Course_Price", "[Price] >= 0");
+
+                            t.HasCheckConstraint("CK_Course_Status", "[Status] IN (1, 2)");
+                        });
                 });
 
             modelBuilder.Entity("OLP.Domain.Entities.CourseCategory", b =>
@@ -302,13 +316,18 @@ namespace OLP.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("CourseCategories");
                 });
@@ -332,7 +351,8 @@ namespace OLP.Infrastructure.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId", "CourseId")
+                        .IsUnique();
 
                     b.ToTable("Enrollments");
                 });
@@ -349,6 +369,7 @@ namespace OLP.Infrastructure.Migrations
 
                     b.Property<string>("Content")
                         .IsRequired()
+                        .HasMaxLength(10000)
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("CourseId")
@@ -362,13 +383,18 @@ namespace OLP.Infrastructure.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CourseId");
+                    b.HasIndex("CourseId", "OrderIndex")
+                        .IsUnique();
 
-                    b.ToTable("Lessons");
+                    b.ToTable("Lessons", t =>
+                        {
+                            t.HasCheckConstraint("CK_Lesson_OrderIndex", "[OrderIndex] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("OLP.Domain.Entities.LessonProgress", b =>
@@ -393,7 +419,8 @@ namespace OLP.Infrastructure.Migrations
 
                     b.HasIndex("LessonId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId", "LessonId")
+                        .IsUnique();
 
                     b.ToTable("LessonProgresses");
                 });
@@ -412,18 +439,20 @@ namespace OLP.Infrastructure.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "IsRead", "CreatedAt");
 
                     b.ToTable("Notifications");
                 });
@@ -435,7 +464,8 @@ namespace OLP.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Comment")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<Guid>("CourseId")
                         .HasColumnType("uniqueidentifier");
@@ -453,9 +483,13 @@ namespace OLP.Infrastructure.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId", "CourseId")
+                        .IsUnique();
 
-                    b.ToTable("Reviews");
+                    b.ToTable("Reviews", t =>
+                        {
+                            t.HasCheckConstraint("CK_Review_Rating", "[Rating] BETWEEN 1 AND 5");
+                        });
                 });
 
             modelBuilder.Entity("OLP.Domain.Entities.Submission", b =>
@@ -473,10 +507,12 @@ namespace OLP.Infrastructure.Migrations
 
                     b.Property<string>("Content")
                         .IsRequired()
+                        .HasMaxLength(10000)
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Feedback")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<decimal?>("Score")
                         .HasPrecision(18, 2)
@@ -490,11 +526,15 @@ namespace OLP.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AssignmentId");
-
                     b.HasIndex("StudentId");
 
-                    b.ToTable("Submissions");
+                    b.HasIndex("AssignmentId", "StudentId")
+                        .IsUnique();
+
+                    b.ToTable("Submissions", t =>
+                        {
+                            t.HasCheckConstraint("CK_Submission_Score", "[Score] IS NULL OR [Score] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("OLP.Domain.Entities.User", b =>
@@ -507,36 +547,28 @@ namespace OLP.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<string>("Avatar")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("Role")
-                        .HasColumnType("int");
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicationUserId")
                         .IsUnique();
 
-                    b.ToTable("UserProfiles");
+                    b.ToTable("DomainUsers", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -595,7 +627,7 @@ namespace OLP.Infrastructure.Migrations
                     b.HasOne("OLP.Domain.Entities.Course", "Course")
                         .WithMany("Assignments")
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Course");
@@ -606,13 +638,13 @@ namespace OLP.Infrastructure.Migrations
                     b.HasOne("OLP.Domain.Entities.CourseCategory", "Category")
                         .WithMany("Courses")
                         .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("OLP.Domain.Entities.User", "Teacher")
                         .WithMany("Courses")
                         .HasForeignKey("TeacherId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Category");
@@ -625,7 +657,7 @@ namespace OLP.Infrastructure.Migrations
                     b.HasOne("OLP.Domain.Entities.Course", "Course")
                         .WithMany("Enrollments")
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("OLP.Domain.Entities.User", "Student")
@@ -644,7 +676,7 @@ namespace OLP.Infrastructure.Migrations
                     b.HasOne("OLP.Domain.Entities.Course", "Course")
                         .WithMany("Lessons")
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("Course");
@@ -655,7 +687,7 @@ namespace OLP.Infrastructure.Migrations
                     b.HasOne("OLP.Domain.Entities.Lesson", "Lesson")
                         .WithMany("LessonProgresses")
                         .HasForeignKey("LessonId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("OLP.Domain.Entities.User", "Student")
@@ -674,7 +706,7 @@ namespace OLP.Infrastructure.Migrations
                     b.HasOne("OLP.Domain.Entities.User", "User")
                         .WithMany("Notifications")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -685,7 +717,7 @@ namespace OLP.Infrastructure.Migrations
                     b.HasOne("OLP.Domain.Entities.Course", "Course")
                         .WithMany("Reviews")
                         .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("OLP.Domain.Entities.User", "Student")
@@ -704,7 +736,7 @@ namespace OLP.Infrastructure.Migrations
                     b.HasOne("OLP.Domain.Entities.Assignment", "Assignment")
                         .WithMany("Submissions")
                         .HasForeignKey("AssignmentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("OLP.Domain.Entities.User", "Student")
@@ -723,7 +755,7 @@ namespace OLP.Infrastructure.Migrations
                     b.HasOne("OLP.Domain.Entities.ApplicationUser", "ApplicationUser")
                         .WithOne("User")
                         .HasForeignKey("OLP.Domain.Entities.User", "ApplicationUserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.Navigation("ApplicationUser");

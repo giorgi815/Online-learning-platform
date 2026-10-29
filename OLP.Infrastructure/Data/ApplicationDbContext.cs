@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using OLP.Domain.Entities;
@@ -12,7 +11,7 @@ namespace OLP.Infrastructure.Data
         {
         }
 
-        public DbSet<User> UserProfiles { get; set; }
+        public DbSet<User> DomainUsers { get; set; }
 
         public DbSet<Course> Courses { get; set; }
         public DbSet<Lesson> Lessons { get; set; }
@@ -28,47 +27,9 @@ namespace OLP.Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            modelBuilder.Entity<User>()
-                .HasOne(u => u.ApplicationUser)
-                .WithOne(a => a.User)
-                .HasForeignKey<User>(u => u.ApplicationUserId);
-
-            modelBuilder.Entity<Course>()
-                .Property(c => c.Price)
-                .HasPrecision(18, 2);
-
-            modelBuilder.Entity<Assignment>()
-                .Property(a => a.MaxScore)
-                .HasPrecision(18, 2);
-
-            modelBuilder.Entity<Submission>()
-                .Property(s => s.Score)
-                .HasPrecision(18, 2);
-
-            modelBuilder.Entity<Enrollment>()
-                .HasOne(e => e.Student)
-                .WithMany(u => u.Enrollments)
-                .HasForeignKey(e => e.StudentId)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder.Entity<Review>()
-                .HasOne(r => r.Student)
-                .WithMany(u => u.Reviews)
-                .HasForeignKey(r => r.StudentId)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder.Entity<Submission>()
-                .HasOne(s => s.Student)
-                .WithMany(u => u.Submissions)
-                .HasForeignKey(s => s.StudentId)
-                .OnDelete(DeleteBehavior.NoAction);
-
-            modelBuilder.Entity<LessonProgress>()
-                .HasOne(lp => lp.Student)
-                .WithMany(u => u.LessonProgresses)
-                .HasForeignKey(lp => lp.StudentId)
-                .OnDelete(DeleteBehavior.NoAction);
-
+            modelBuilder.ApplyConfigurationsFromAssembly(
+                typeof(ApplicationDbContext).Assembly);
         }
     }
 }
+

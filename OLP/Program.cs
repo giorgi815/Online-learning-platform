@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OLP.Domain.Entities;
 using OLP.Infrastructure.Data;
+using OLP.Infrastructure;
 
 namespace OLP
 {
@@ -14,6 +15,8 @@ namespace OLP
             // Add services to the container.
 
             builder.Services.AddControllers();
+
+            builder.Services.AddInfrastructure(builder.Configuration);
 
             var app = builder.Build();
 
