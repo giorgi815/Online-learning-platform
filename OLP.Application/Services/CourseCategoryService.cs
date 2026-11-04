@@ -6,6 +6,7 @@ using OLP.Application.Contracts.Services;
 using OLP.Application.DTOs.CourseCategory;
 using OLP.Application.Exceptions;
 using OLP.Domain.Entities;
+using Org.BouncyCastle.Asn1.Cms.Ecc;
 
 namespace OLP.Application.Services
 {
@@ -15,9 +16,19 @@ namespace OLP.Application.Services
         private readonly ICourseCategoryRepository _courseCategoryRepository;
         private readonly ICourseRepository _courseRepository;
         private readonly IMapper _mapper;
-        private readonly UserManager<ApplicationUser> _userManager;
-        
-
+        private readonly ICacheService _cache;
+        private const string CategoryListKey = "categories:all";
+        public CourseCategoryService(
+            ICourseCategoryRepository courseCategoryRepository,
+            ICourseRepository courseRepository,
+            IMapper mapper,
+            ICacheService cache)
+        {
+            _courseCategoryRepository = courseCategoryRepository;
+            _courseRepository = courseRepository;
+            _mapper = mapper;
+            _cache = cache;
+        }
 
         public async Task<CourseCategoryResponseDto> CreateCategoryAsync(CreateCourseCategoryDto dto)
         {
@@ -27,8 +38,8 @@ namespace OLP.Application.Services
             if(string.IsNullOrWhiteSpace(dto.Name))
                 throw new BadRequestException("Category name cannot be empty.");
 
-            if(string.IsNullOrWhiteSpace(dto.Description))
-                throw new BadRequestException("Category description cannot be empty.");
+            if(await _courseCategoryRepository.ExistsAsync(c => c.Name == dto.Name))
+                throw new ConflictException($"Category with name {dto.Name} already exists.");
 
             var category = _mapper.Map<CourseCategory>(dto);
 
@@ -38,29 +49,46 @@ namespace OLP.Application.Services
             return _mapper.Map<CourseCategoryResponseDto>(category);
         }
 
-        public Task DeleteCategoryAsync(Guid categoryId)
+        public async Task DeleteCategoryAsync(Guid categoryId)
         {
-            var category = _courseCategoryRepository.GetAsync(c => c.Id == categoryId).Result;
+            var category = await _courseCategoryRepository.GetAsync(c => c.Id == categoryId);
 
-            if(category is null)
+            if(await _courseRepository.ExistsAsync(c => c.CategoryId == categoryId))
+                throw new ConflictException("Cannot delete category with associated courses.");
+
+            if (category is null)
                 throw new NotFoundException($"Category with ID {categoryId} not found.");
 
-            _courseCategoryRepository.Delete(category);
+            _courseCategoryRepository.Remove(category);
+
+            await _courseCategoryRepository.SaveAsync();
         }
 
-        public Task<IEnumerable<CourseCategoryResponseDto>> GetAllCategoriesAsync()
+        public async Task<IEnumerable<CourseCategoryResponseDto>> GetAllCategoriesAsync()
         {
-            throw new NotImplementedException();
+            var categories = await _courseCategoryRepository.GetAllAsync();
+
+            return _mapper.Map<IEnumerable<CourseCategoryResponseDto>>(categories);
         }
 
-        public Task<CourseCategoryResponseDto> GetCategoryByIdAsync(Guid categoryId)
-        {
-            throw new NotImplementedException();
-        }
+        public async Task<CourseCategoryResponseDto> GetCategoryByIdAsync(Guid categoryId)
+            => _mapper.Map<CourseCategoryResponseDto>(await _courseCategoryRepository.GetAsync(c => c.Id == categoryId));
 
-        public Task<CourseCategoryResponseDto> UpdateCategoryAsync(Guid categoryId, UpdateCourseCategoryDto dto)
+        public async Task<CourseCategoryResponseDto> UpdateCategoryAsync(Guid categoryId, UpdateCourseCategoryDto dto)
         {
-            throw new NotImplementedException();
+            var category = await _courseCategoryRepository.GetAsync(c => c.Id == categoryId);
+
+            if(string.IsNullOrWhiteSpace(dto.Name))
+                throw new BadRequestException("Category name cannot be empty.");
+
+            if(await _courseCategoryRepository.ExistsAsync(x => x.Id != categoryId && x.Name == dto.Name))
+                throw new ConflictException($"Category with name {dto.Name} already exists.");
+
+            _mapper.Map(dto, category);
+
+            await _courseCategoryRepository.SaveAsync();
+
+            return _mapper.Map<CourseCategoryResponseDto>(category);
         }
     }
 }

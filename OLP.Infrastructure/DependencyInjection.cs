@@ -21,6 +21,13 @@ namespace OLP.Infrastructure
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
+            //Redis configuration
+            services.AddStackExchangeRedisCache(options =>
+            {
+                options.Configuration = configuration.GetConnectionString("Redis");
+                options.InstanceName = "OLP_";
+            });
+
             // Identity configuration
             services
             .AddIdentity<ApplicationUser, IdentityRole<Guid>>(
