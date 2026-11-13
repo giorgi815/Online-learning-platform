@@ -20,7 +20,7 @@ namespace OLP.Application.Services
         private readonly RoleManager<IdentityRole<Guid>> _roles;
         private readonly IUserRepository _profiles;
         private readonly IConfiguration _configuration;
-        IRefreshTokenStore _refreshTokens;
+        private readonly IRefreshTokenStore _refreshTokens;
 
         public AuthService(
             UserManager<ApplicationUser> users,
