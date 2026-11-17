@@ -11,6 +11,8 @@ namespace OLP.Application.Contracts.Services
 
         Task<UserResponseDto> UpdateprofilAsync(Guid userId, UpdateAvatarDto dto);
 
+        Task<UserResponseDto> UpdateAvatarAsync(Guid userId, UpdateAvatarDto dto);
+
         Task<IEnumerable<UserResponseDto>> GetTeachersAsync();
 
         Task<IEnumerable<UserResponseDto>> GetStudentsAsync();

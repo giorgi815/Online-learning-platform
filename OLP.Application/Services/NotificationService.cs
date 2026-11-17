@@ -2,6 +2,7 @@
 using OLP.Application.Contracts.Persistence;
 using OLP.Application.Contracts.Services;
 using OLP.Application.DTOs.Notification;
+using OLP.Domain.Entities;
 
 namespace OLP.Application.Services
 {
@@ -20,29 +21,50 @@ namespace OLP.Application.Services
             _mapper = mapper;
         }
 
-        public Task<NotificationResponseDto> CreateNotificationAsync(CreateNotificationDto dto)
+        public async Task<NotificationResponseDto> CreateNotificationAsync(CreateNotificationDto dto)
         {
-            throw new NotImplementedException();
+            if(!await _profiles.ExistsAsync(u => u.Id == dto.UserId))
+                throw new Exception("User not found.");
+
+            var entity = _mapper.Map<Notification>(dto);
+            await _notifications.AddAsync(entity);
+            await _notifications.SaveAsync();
+
+            return _mapper.Map<NotificationResponseDto>(entity);
         }
 
-        public Task DeleteNotificationAsync(Guid notificationId, Guid userId)
+        public async Task DeleteNotificationAsync(Guid notificationId, Guid userId)
         {
-            throw new NotImplementedException();
+            var entity = ServiceChecks.Found(await _notifications.GetAsync(n => n.Id == notificationId && n.UserId == userId), "Notification");
+
+            _notifications.Remove(entity);
+            await _notifications.SaveAsync();
         }
 
-        public Task<IEnumerable<NotificationResponseDto>> GetUserNotificationsAsync(Guid userId)
+        public async Task<IEnumerable<NotificationResponseDto>> GetUserNotificationsAsync(Guid userId)
         {
-            throw new NotImplementedException();
+            var (items, _) = await _notifications.GetAllAsync(filter: n => n.UserId == userId, orderBy: n => n.CreatedAt, ascending: false, tracikng: false);
+
+            return _mapper.Map<IEnumerable<NotificationResponseDto>>(items);
         }
 
-        public Task MarkAllAsReadAsync(Guid userId)
+        public async Task MarkAllAsReadAsync(Guid userId)
         {
-            throw new NotImplementedException();
+            var (items, _) = await _notifications.GetAllAsync(filter: n => n.UserId == userId && !n.IsRead);
+            
+            foreach (var item in items)
+                item.IsRead = true;
+
+            await _notifications.SaveAsync();
         }
 
-        public Task MarkAsReadAsync(Guid notificationId, Guid userId)
+        public async Task MarkAsReadAsync(Guid notificationId, Guid userId)
         {
-            throw new NotImplementedException();
+            var entity = ServiceChecks.Found(await _notifications.GetAsync(n => n.Id == notificationId && n.UserId == userId), "Notification");
+
+            entity.IsRead = true;
+
+            await _notifications.SaveAsync();
         }
     }
 }
