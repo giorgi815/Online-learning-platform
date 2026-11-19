@@ -16,5 +16,7 @@ namespace OLP.Application.Contracts.Services
         Task<IEnumerable<SubmissionResponseDto>> GetSubmissionsByStudentAsync(Guid studentId);
 
         Task<SubmissionResponseDto> GradeSubmissionAsync(Guid submissionId, GradeSubmissionDto dto, Guid teacherId);
+        Task<SubmissionResponseDto> UploadAttachmentAsync(Guid submissionId, Guid studentId, Stream content, string fileName);
+        Task<Stream> OpenAttachmentAsync(Guid submissionId, Guid actorId, string key);
     }
 }

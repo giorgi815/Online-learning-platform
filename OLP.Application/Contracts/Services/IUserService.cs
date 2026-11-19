@@ -16,5 +16,7 @@ namespace OLP.Application.Contracts.Services
         Task<IEnumerable<UserResponseDto>> GetTeachersAsync();
 
         Task<IEnumerable<UserResponseDto>> GetStudentsAsync();
+        Task<UserResponseDto> UploadAvatarAsync(Guid userId, Stream content, string fileName);
+        Task<Stream> OpenAvatarAsync(Guid profileId);
     }
 }

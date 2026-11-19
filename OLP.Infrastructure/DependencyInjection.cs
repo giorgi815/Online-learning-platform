@@ -3,9 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using OLP.Application.Contracts.Persistence;
+using OLP.Application.Contracts.Services;
+using OLP.Application.Services;
 using OLP.Domain.Entities;
 using OLP.Infrastructure.Data;
 using OLP.Infrastructure.Persistence;
+using StackExchange.Redis;
 
 namespace OLP.Infrastructure
 {
@@ -22,11 +25,19 @@ namespace OLP.Infrastructure
                 options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
             //Redis configuration
+            var redisConnection = configuration.GetConnectionString("Redis")
+                ?? throw new InvalidOperationException(
+                    "Missing Redis connection string.");
+
             services.AddStackExchangeRedisCache(options =>
             {
-                options.Configuration = configuration.GetConnectionString("Redis");
+                options.Configuration = redisConnection;
                 options.InstanceName = "OLP_";
             });
+
+            services.AddSingleton<IConnectionMultiplexer>(_ =>
+                ConnectionMultiplexer.Connect(redisConnection));
+
 
             // Identity configuration
             services
@@ -45,6 +56,8 @@ namespace OLP.Infrastructure
                     TimeSpan.FromMinutes(5);
 
                 options.Lockout.MaxFailedAccessAttempts = 5;
+
+                options.SignIn.RequireConfirmedEmail = true;
             })
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
@@ -57,11 +70,14 @@ namespace OLP.Infrastructure
             services.AddScoped<ILessonRepository, LessonRepository>();
             services.AddScoped<IAssignmentRepository, AssignmentRepository>();
             services.AddScoped<ISubmissionRepository, SubmissionRepository>();
+            services.AddScoped<IUserRepository, UserRepository>();
             services.AddScoped<IEnrollmentRepository, EnrollmentRepository>();
             services.AddScoped<IReviewRepository, ReviewRepository>();
             services.AddScoped<ILessonProgressRepository, LessonProgressRepository>();
             services.AddScoped<ICourseCategoryRepository, CourseCategoryRepository>();
             services.AddScoped<INotificationRepository, NotificationRepository>();
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<ICertificateRepository, CertificateRepository>();
 
 
             return services;

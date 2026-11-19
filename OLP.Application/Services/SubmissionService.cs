@@ -13,25 +13,25 @@ namespace OLP.Application.Services
         private readonly ISubmissionRepository _submissions;
         private readonly IAssignmentRepository _assignments;
         private readonly IEnrollmentRepository _enrollments;
+        private readonly IFileStorageService _files;
         private readonly IMapper _mapper;
 
         public SubmissionService(ISubmissionRepository submissionRepository,
             IAssignmentRepository assignmentRepository,
+            IFileStorageService files,
             IEnrollmentRepository enrollmentRepository,
             IMapper mapper)
         {
             _submissions = submissionRepository;
             _assignments = assignmentRepository;
+            _files = files;
             _enrollments = enrollmentRepository;
             _mapper = mapper;
         }
 
-        private async Task<Assignment> FindAssignment(Guid id)
-        => ServiceChecks.Found(await _assignments.GetAsync(a => a.Id == id, include: q => q.Include(a => a.Course)), "Assignment");
-
         public async Task<SubmissionResponseDto> GetSubmissionByIdAsync(Guid submissionId, Guid requestId)
         {
-            var submission = await _submissions.GetAsync(s => s.Id == submissionId, tracking: false);
+            var submission = ServiceChecks.Found(await _submissions.GetAsync(s => s.Id == submissionId, tracking: false), "Submission");
             var assignment = await FindAssignment(submission.AssignmentId);
 
             if (submission.StudentId != requestId && assignment.Course.TeacherId != requestId)
@@ -45,7 +45,10 @@ namespace OLP.Application.Services
             var assignment = await FindAssignment(assignmentId);
             ServiceChecks.Owner(assignment.Course.TeacherId, teacherId);
 
-            var (items, _) = await _submissions.GetAllAsync(filter: s => s.AssignmentId == assignmentId, tracikng: false);
+            var (items, _) = await _submissions.GetAllAsync(
+                filter: s => s.AssignmentId == assignmentId,
+                tracikng: false);
+
             return _mapper.Map<IEnumerable<SubmissionResponseDto>>(items);
         }
 
@@ -102,5 +105,43 @@ namespace OLP.Application.Services
             await _submissions.SaveAsync();
             return _mapper.Map<SubmissionResponseDto>(entity);
         }
+
+        public async Task<SubmissionResponseDto> UploadAttachmentAsync(Guid submissionId, Guid studentId, Stream content, string fileName)
+        {
+            var entity = ServiceChecks.Found(await _submissions.GetAsync(s => s.Id == submissionId), "Submission");
+
+            ServiceChecks.Owner(entity.StudentId, studentId);
+            
+            var assignment = await FindAssignment(entity.AssignmentId);
+            
+            if (!await _enrollments.ExistsAsync(e => e.StudentId == studentId && e.CourseId == assignment.CourseId))
+                throw new ForbiddenException("Enrollment required.");
+            
+            ServiceChecks.Require(DateTime.UtcNow <= assignment.DueDate && entity.Score is null,
+                "Cannot edit a late or graded submission.");
+            
+            var key = await _files.UploadAsync(content, fileName);
+            entity.Attachments.Add(key);
+            await _submissions.SaveAsync();
+            
+            return _mapper.Map<SubmissionResponseDto>(entity);
+        }
+
+        public async Task<Stream> OpenAttachmentAsync(Guid submissionId, Guid actorId, string key)
+        {
+            var entity = ServiceChecks.Found(await _submissions.GetAsync(s => s.Id == submissionId, tracking: false), "Submission");
+            var assignment = await FindAssignment(entity.AssignmentId);
+
+            if (entity.StudentId != actorId && assignment.Course.TeacherId != actorId)
+                throw new ForbiddenException("Not allowed to view this submission.");
+            
+            if (!entity.Attachments.Contains(key))
+                throw new NotFoundException("Attachment not found.");
+            
+            return await _files.OpenReadAsync(key);
+        }
+
+        private async Task<Assignment> FindAssignment(Guid id)
+        => ServiceChecks.Found(await _assignments.GetAsync(a => a.Id == id, include: q => q.Include(a => a.Course)), "Assignment");
     }
 }

@@ -16,5 +16,9 @@ namespace OLP.Application.Contracts.Services
         Task LogoutAsync(Guid userId);
 
         Task ChangePasswordAsync(Guid userId, ChangePasswordDto dto);
+        Task ConfirmEmailAsync(ConfirmEmailDto dto);
+        Task ForgotPasswordAsync(ForgotPasswordDto dto);
+        Task ResetPasswordAsync(ResetPasswordDto dto);
+        Task ResendConfirmationEmailAsync(ForgotPasswordDto dto);
     }
 }

@@ -15,17 +15,20 @@ namespace OLP.Application.Services
         private readonly ICourseRepository _courses;
         private readonly IUserRepository _profiles;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IPaymentRepository _payments;
         private readonly IMapper _mapper;
 
         public EnrollmentService(IEnrollmentRepository enrollmentService,
             ICourseRepository courseRepository,
             IUserRepository userRepository,
+            IPaymentRepository payments,
             UserManager<ApplicationUser> userManager,
             IMapper mapper)
         {
             _enrollments = enrollmentService;
             _courses = courseRepository;
             _profiles = userRepository;
+            _payments = payments;
             _userManager = userManager;
             _mapper = mapper;
         }
@@ -40,21 +43,32 @@ namespace OLP.Application.Services
 
             var course = ServiceChecks.Found(await _courses.GetAsync(c => c.Id == courseId), "Course");
             ServiceChecks.Require(course.Status == CourseStatus.Published, "Course is not published.");
-
+            
             if (await _enrollments.ExistsAsync(e => e.StudentId == studentId && e.CourseId == courseId))
                 throw new ConflictException("Already enrolled.");
-            var enrollment = new Enrollment { CourseId = courseId, StudentId = studentId };
-
-            await _enrollments.AddAsync(enrollment);
+            
+            if (course.Price > 0 && !await _payments.ExistsAsync(p =>
+                    p.CourseId == courseId && p.StudentId == studentId && p.PaidAt != null))
+            {
+                throw new ForbiddenException("Purchase this course before enrolling.");
+            }
+            
+            var entity = new Enrollment { CourseId = courseId, StudentId = studentId };
+            
+            await _enrollments.AddAsync(entity);
             await _enrollments.SaveAsync();
-
-            enrollment.Course = course;
-            return _mapper.Map<EnrollmentResponseDto>(enrollment);
+            
+            entity.Course = course;
+            return _mapper.Map<EnrollmentResponseDto>(entity);
         }
 
         public async Task<IEnumerable<EnrollmentResponseDto>> GetEnrollmentsByStudentAsync(Guid studentId)
         {
-            var (items, _) = await _enrollments.GetAllAsync(filter: e => e.StudentId == studentId, tracikng: false, includes: [e => e.Course]);
+            var (items, _) = await _enrollments.GetAllAsync(
+                filter: e => e.StudentId == studentId,
+                tracikng: false,
+                includes: [e => e.Course]);
+
             return _mapper.Map<IEnumerable<EnrollmentResponseDto>>(items);
         }
 
@@ -63,15 +77,21 @@ namespace OLP.Application.Services
             var course = ServiceChecks.Found(await _courses.GetAsync(c => c.Id == courseId), "Course");
             ServiceChecks.Owner(course.TeacherId, requestId);
 
-            var (items, _) = await _enrollments.GetAllAsync(filter: e => e.CourseId == courseId, tracikng: false, includes: [e => e.Course]);
+            var (items, _) = await _enrollments.GetAllAsync(
+                filter: e => e.CourseId == courseId,
+                tracikng: false,
+                includes: [e => e.Course]);
+
             return _mapper.Map<IEnumerable<EnrollmentResponseDto>>(items);
         }
 
-        public async Task<bool> IsStudentEnrolledAsync(Guid courseId, Guid studentId) => await _enrollments.ExistsAsync(e => e.CourseId == courseId && e.StudentId == studentId);
+        public async Task<bool> IsStudentEnrolledAsync(Guid courseId, Guid studentId)
+            => await _enrollments.ExistsAsync(e => e.CourseId == courseId && e.StudentId == studentId);
 
         public async Task UnEnrollStudentAsync(Guid courseId, Guid studentId)
         {
             var enrollment = ServiceChecks.Found(await _enrollments.GetAsync(e => e.CourseId == courseId && e.StudentId == studentId), "Enrollment");
+
             _enrollments.Remove(enrollment);
             await _enrollments.SaveAsync();
         }
