@@ -35,10 +35,12 @@ namespace OLP.Application.Services
         public async Task<CourseResponseDto> CreateCourseAsync(CreateCourseDto dto, Guid teacherId)
         {
             await ValidateTeacher(teacherId);
-            if(!await _CategoryRepository.ExistsAsync(x => x.Id == dto.CategoryId))
+            if (!await _CategoryRepository.ExistsAsync(x => x.Id == dto.CategoryId))
                 throw new NotFoundException("Category not found.");
 
+            ServiceChecks.Require(dto.Price >= 0 && dto.Duration > 0, "Invalid course price or duration.");
             var course = _mapper.Map<Course>(dto);
+            course.TeacherId = teacherId;
             course.Status = CourseStatus.Draft;
             await _courseRepository.AddAsync(course);
             await _courseRepository.SaveAsync();
@@ -48,30 +50,40 @@ namespace OLP.Application.Services
         public async Task DeleteCourseAsync(Guid courseId, Guid teacherId)
         {
             await ValidateTeacher(teacherId);
-            var course = await _courseRepository.GetAsync(x => x.Id == courseId);
+            var course = ServiceChecks.Found(await _courseRepository.GetAsync(x => x.Id == courseId), "Course");
 
-            if(course.TeacherId != teacherId)
+            if (course.TeacherId != teacherId)
                 throw new ForbiddenException("You do not own this resource.");
-            
+
             _courseRepository.Remove(course);
             await _courseRepository.SaveAsync();
 
         }
 
-        public async Task<IEnumerable<CourseResponseDto>> GetAllCourseAsync() => await List(x => true);
+        public async Task<IEnumerable<CourseResponseDto>> GetAllCourseAsync() => await List(x => x.Status == CourseStatus.Published);
 
-        public async Task<IEnumerable<CourseResponseDto>> GetCourseByCategoryAsync(Guid categoryId) => await List(x => x.CategoryId == categoryId);
+        public async Task<IEnumerable<CourseResponseDto>> GetCourseByCategoryAsync(Guid categoryId) => await List(x => x.CategoryId == categoryId && x.Status == CourseStatus.Published);
 
-        public async Task<CourseResponseDto> GetCourseByIdAsync(Guid courseId) => await Response(courseId);
+        public async Task<CourseResponseDto> GetCourseByIdAsync(Guid courseId)
+        {
+            var course = ServiceChecks.Found(await _courseRepository.GetAsync(
+                c => c.Id == courseId && c.Status == CourseStatus.Published,
+                tracking: false), "Published course");
+            return await Response(course.Id);
+        }
 
-        public async Task<IEnumerable<CourseResponseDto>> GetCourseByTeacherIdAsync(Guid teacherId) => await List(x => x.TeacherId == teacherId);
+        public async Task<IEnumerable<CourseResponseDto>> GetCourseByTeacherIdAsync(Guid teacherId, Guid actorId)
+        {
+            return await List(x => x.TeacherId == teacherId &&
+                (x.Status == CourseStatus.Published || teacherId == actorId));
+        }
 
         public async Task PublishCourse(Guid courseId, Guid teacherId)
         {
             await ValidateTeacher(teacherId);
-            var course = await _courseRepository.GetAsync(x => x.Id == courseId);
+            var course = ServiceChecks.Found(await _courseRepository.GetAsync(x => x.Id == courseId), "Course");
 
-            if(course.TeacherId != teacherId)
+            if (course.TeacherId != teacherId)
                 throw new ForbiddenException("You do not own this resource.");
 
             course.Status = CourseStatus.Published;
@@ -81,14 +93,16 @@ namespace OLP.Application.Services
         public async Task<CourseResponseDto> UpdateCourseAsync(UpdateCourseDto dto, Guid courseId, Guid teacherId)
         {
             await ValidateTeacher(teacherId);
-            var course = await _courseRepository.GetAsync(x => x.Id == courseId);
-            
-            if(course.TeacherId != teacherId)
+            var course = ServiceChecks.Found(await _courseRepository.GetAsync(x => x.Id == courseId), "Course");
+
+            if (course.TeacherId != teacherId)
                 throw new ForbiddenException("You do not own this resource.");
 
-            if(dto.Price >= 0 || dto.Duration > 0)
+            if (dto.Price < 0 || dto.Duration <= 0)
                 throw new BadRequestException("Invalid course price or duration.");
 
+            if (!await _CategoryRepository.ExistsAsync(x => x.Id == dto.CategoryId))
+                throw new NotFoundException("Category not found.");
             _mapper.Map(dto, course);
             await _courseRepository.SaveAsync();
             return await Response(courseId);
@@ -103,12 +117,12 @@ namespace OLP.Application.Services
                 .Include(c => c.Teacher)
                 .Include(c => c.Category));
 
-            return _mapper.Map<CourseResponseDto>(course);
+            return _mapper.Map<CourseResponseDto>(ServiceChecks.Found(course, "Course"));
         }
 
         private async Task ValidateTeacher(Guid teacherId)
         {
-            var profile = await _profiles.GetAsync(x => x.Id == teacherId);
+            var profile = ServiceChecks.Found(await _profiles.GetAsync(x => x.Id == teacherId), "Teacher profile");
 
             var account = await _userManager.FindByIdAsync(profile.ApplicationUserId.ToString());
 
@@ -122,7 +136,7 @@ namespace OLP.Application.Services
                 filter: predicate,
                 tracikng: false,
                 includes: [c => c.Teacher, c => c.Category]);
-            
+
             return _mapper.Map<List<CourseResponseDto>>(items.ToList());
         }
     }

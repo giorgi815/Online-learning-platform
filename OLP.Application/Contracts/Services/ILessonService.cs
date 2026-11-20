@@ -15,8 +15,6 @@ namespace OLP.Application.Contracts.Services
 
         Task<IEnumerable<LessonResponseDto>> GetLessonByCourseAsync(Guid courseId, Guid actorId);
 
-        Task<IEnumerable<LessonResponseDto>> GetAllLessonsAsync();
-
         Task<LessonResponseDto> UploadAttachmentAsync(Guid lessonId, Guid teacherId, Stream content, string fileName);
         Task<Stream> OpenAttachmentAsync(Guid lessonId, Guid actorId, string key);
 

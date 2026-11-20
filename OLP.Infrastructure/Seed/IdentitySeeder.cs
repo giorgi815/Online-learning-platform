@@ -24,7 +24,6 @@ namespace OLP.Infrastructure.Seed
             var context = scope.ServiceProvider
                 .GetRequiredService<ApplicationDbContext>();
 
-            // Create roles if they don't exist
             string[] roles = { "Admin", "Teacher", "Student" };
 
             foreach (var role in roles)
@@ -41,7 +40,6 @@ namespace OLP.Infrastructure.Seed
                 }
             }
 
-            // Read initial Admin credentials from configuration
             var email = configuration["Admin:Email"];
             var password = configuration["Admin:Password"];
 
@@ -51,43 +49,35 @@ namespace OLP.Infrastructure.Seed
                 return;
             }
 
-            var existingAccount = await userManager.FindByEmailAsync(email);
+            var admin = await userManager.FindByEmailAsync(email);
 
-            if (existingAccount != null)
+            if (admin is not null)
             {
-                if (!await userManager.IsInRoleAsync(existingAccount, "Admin"))
+                if (!await userManager.IsInRoleAsync(admin, "Admin"))
                     throw new InvalidOperationException(
                         "The configured Admin email belongs to a non-admin account.");
-
-                return;
             }
-
-            var admin = new ApplicationUser
+            else
             {
-                UserName = email,
-                Email = email,
-                EmailConfirmed = true
-            };
+                admin = new ApplicationUser
+                {
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = true
+                };
 
-            var createResult = await userManager.CreateAsync(admin, password);
-
-            if (!createResult.Succeeded)
-                throw new InvalidOperationException(
-                    string.Join("; ",
+                var createResult = await userManager.CreateAsync(admin, password);
+                if (!createResult.Succeeded)
+                    throw new InvalidOperationException(string.Join("; ",
                         createResult.Errors.Select(e => e.Description)));
 
-            var roleResult = await userManager.AddToRoleAsync(admin, "Admin");
-
-            if (!roleResult.Succeeded)
-                throw new InvalidOperationException(
-                    string.Join("; ",
+                var roleResult = await userManager.AddToRoleAsync(admin, "Admin");
+                if (!roleResult.Succeeded)
+                    throw new InvalidOperationException(string.Join("; ",
                         roleResult.Errors.Select(e => e.Description)));
+            }
 
-            // Your project has a separate Domain User profile
-            var profileExists = await context.DomainUsers
-                .AnyAsync(u => u.ApplicationUserId == admin.Id);
-
-            if (!profileExists)
+            if (!await context.DomainUsers.AnyAsync(u => u.ApplicationUserId == admin.Id))
             {
                 context.DomainUsers.Add(new User
                 {
@@ -95,7 +85,6 @@ namespace OLP.Infrastructure.Seed
                     FirstName = "System",
                     LastName = "Admin"
                 });
-
                 await context.SaveChangesAsync();
             }
         }

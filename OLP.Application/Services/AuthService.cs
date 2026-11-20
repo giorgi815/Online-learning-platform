@@ -43,12 +43,12 @@ namespace OLP.Application.Services
             _emailService = emailService;
         }
 
-        public Task<AuthResponseDto> RegisterStudentAsync(RegisterDto dto)
+        public Task<RegistrationResponseDto> RegisterStudentAsync(RegisterDto dto)
         {
             return RegisterWithRoleAsync(dto, "Student");
         }
 
-        public Task<AuthResponseDto> RegisterTeacherAsync(RegisterDto dto)
+        public Task<RegistrationResponseDto> RegisterTeacherAsync(RegisterDto dto)
         {
             return RegisterWithRoleAsync(dto, "Teacher");
         }
@@ -152,7 +152,7 @@ namespace OLP.Application.Services
 
             await SendConfirmationAsync(account);
         }
-        private async Task<AuthResponseDto> RegisterWithRoleAsync(RegisterDto dto, string role)
+        private async Task<RegistrationResponseDto> RegisterWithRoleAsync(RegisterDto dto, string role)
         {
             if (dto.Password != dto.ConfirmPassword)
                 throw new BadRequestException("Passwords do not match.");
@@ -164,12 +164,11 @@ namespace OLP.Application.Services
                 throw new InvalidOperationException($"{role} role has not been seeded.");
 
             var account = new ApplicationUser { UserName = dto.Email, Email = dto.Email };
-            var created = await _users.CreateAsync(account, dto.Password);
+            EnsureIdentity(await _users.CreateAsync(account, dto.Password));
 
             try
             {
-                var roleResult = await _users.CreateAsync(account, dto.Password);
-                EnsureIdentity(roleResult);
+                EnsureIdentity(await _users.AddToRoleAsync(account, role));
 
                 var profile = new User
                 {
@@ -180,14 +179,21 @@ namespace OLP.Application.Services
 
                 await _profiles.AddAsync(profile);
                 await _profiles.SaveAsync();
-
-                return await IssueTokens(account);
             }
             catch
             {
+                var savedProfile = await _profiles.GetAsync(u => u.ApplicationUserId == account.Id);
+                if (savedProfile is not null)
+                {
+                    _profiles.Remove(savedProfile);
+                    await _profiles.SaveAsync();
+                }
                 await _users.DeleteAsync(account);
                 throw;
             }
+
+            await SendConfirmationAsync(account);
+            return new RegistrationResponseDto();
         }
 
         private static void EnsureIdentity(IdentityResult result)

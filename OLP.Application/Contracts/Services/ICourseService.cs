@@ -15,7 +15,7 @@ namespace OLP.Application.Contracts.Services
 
         Task<IEnumerable<CourseResponseDto>> GetAllCourseAsync();
 
-        Task<IEnumerable<CourseResponseDto>> GetCourseByTeacherIdAsync(Guid teacherId);
+        Task<IEnumerable<CourseResponseDto>> GetCourseByTeacherIdAsync(Guid teacherId, Guid actorId);
 
         Task<IEnumerable<CourseResponseDto>> GetCourseByCategoryAsync(Guid categoryId);
 

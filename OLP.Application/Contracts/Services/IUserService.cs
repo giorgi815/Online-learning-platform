@@ -9,7 +9,7 @@ namespace OLP.Application.Contracts.Services
 
         Task<IEnumerable<UserResponseDto>> GetAllUsersAsync();
 
-        Task<UserResponseDto> UpdateprofilAsync(Guid userId, UpdateAvatarDto dto);
+        Task<UserResponseDto> UpdateProfileAsync(Guid userId, UpdateUserDto dto);
 
         Task<UserResponseDto> UpdateAvatarAsync(Guid userId, UpdateAvatarDto dto);
 

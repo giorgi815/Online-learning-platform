@@ -107,6 +107,7 @@ namespace OLP
             if (builder.Environment.IsDevelopment())
             {
                 builder.Services.AddSingleton<IPaymentGateway, MockPaymentGateway>();
+                builder.Services.AddScoped<IPaymentService, PaymentService>();
             }
 
             // Validate DI

@@ -290,7 +290,7 @@ namespace OLP.Infrastructure.Migrations
                     b.HasIndex("StudentId", "CourseId")
                         .IsUnique();
 
-                    b.ToTable("Certificate");
+                    b.ToTable("Certificates");
                 });
 
             modelBuilder.Entity("OLP.Domain.Entities.Course", b =>
@@ -533,7 +533,7 @@ namespace OLP.Infrastructure.Migrations
 
                     b.HasIndex("StudentId", "CourseId");
 
-                    b.ToTable("Payment");
+                    b.ToTable("Payments");
                 });
 
             modelBuilder.Entity("OLP.Domain.Entities.Review", b =>

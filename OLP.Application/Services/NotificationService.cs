@@ -2,6 +2,7 @@
 using OLP.Application.Contracts.Persistence;
 using OLP.Application.Contracts.Services;
 using OLP.Application.DTOs.Notification;
+using OLP.Application.Exceptions;
 using OLP.Domain.Entities;
 
 namespace OLP.Application.Services
@@ -23,8 +24,8 @@ namespace OLP.Application.Services
 
         public async Task<NotificationResponseDto> CreateNotificationAsync(CreateNotificationDto dto)
         {
-            if(!await _profiles.ExistsAsync(u => u.Id == dto.UserId))
-                throw new Exception("User not found.");
+            if (!await _profiles.ExistsAsync(u => u.Id == dto.UserId))
+                throw new NotFoundException("User not found.");
 
             var entity = _mapper.Map<Notification>(dto);
             await _notifications.AddAsync(entity);
@@ -51,7 +52,7 @@ namespace OLP.Application.Services
         public async Task MarkAllAsReadAsync(Guid userId)
         {
             var (items, _) = await _notifications.GetAllAsync(filter: n => n.UserId == userId && !n.IsRead);
-            
+
             foreach (var item in items)
                 item.IsRead = true;
 

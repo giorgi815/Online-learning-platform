@@ -11,11 +11,10 @@ namespace OLP.Application.Contracts.Services
 
         Task DeleteAssignmentAsync(Guid assignmentId, Guid teacherId);
 
-        Task<AssignmentResponseDto> GetAssignmentByIdAsync(Guid assignmentId);
+        Task<AssignmentResponseDto> GetAssignmentByIdAsync(Guid assignmentId, Guid actorId);
 
-        Task<IEnumerable<AssignmentResponseDto>> GetAssignmentsByCourseAsync(Guid courseId);
+        Task<IEnumerable<AssignmentResponseDto>> GetAssignmentsByCourseAsync(Guid courseId, Guid actorId);
 
-        Task<IEnumerable<AssignmentResponseDto>> GetAllAssignmentsAsync();
 
     }
 }

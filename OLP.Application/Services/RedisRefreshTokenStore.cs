@@ -22,31 +22,41 @@ namespace OLP.Application.Services
         public async Task<string> CreateAsync(Guid applicationUserId)
         {
             var token = Generate(applicationUserId);
+
             await _redis.StringSetAsync(Key(applicationUserId), Hash(token), LifeTime);
             return token;
         }
 
         public async Task RevokeAllAsync(Guid applicationUserId)
-            => await _redis.KeyDumpAsync(Key(applicationUserId));
+        {
+            await _redis.KeyDeleteAsync(Key(applicationUserId));
+        }
 
         public async Task<string?> RotateAsync(string oldToken)
         {
-            if (!TryGetUserId(oldToken, out var userId)) return null;
+            if (!TryGetUserId(oldToken, out var userId))
+                return null;
+
             var newToken = Generate(userId);
             var rotated = (int)(long)await _redis.ScriptEvaluateAsync(
                 RotateScript,
                 new RedisKey[] { Key(userId) },
                 new RedisValue[] { Hash(oldToken), Hash(newToken), (long)LifeTime.TotalSeconds });
+            
             return rotated == 1 ? newToken : null;
         }
 
         public static bool TryGetUserId(string token, out Guid userId)
         {
             userId = default;
-            if (string.IsNullOrWhiteSpace(token)) return false;
+
+            if (string.IsNullOrWhiteSpace(token))
+                return false;
+
             var separator = token.IndexOf('.');
-            if (separator < 1 || token.Length - separator - 1 != 86) return false;
-            // A 64-byte Base64Url random secret has 86 characters without padding.
+            if (separator < 1 || token.Length - separator - 1 != 86)
+                return false;
+
             return Guid.TryParseExact(token[..separator], "N", out userId);
         }
 
@@ -54,6 +64,7 @@ namespace OLP.Application.Services
         {
             var secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64))
                 .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
             return $"{userId:N}.{secret}";
         }
 

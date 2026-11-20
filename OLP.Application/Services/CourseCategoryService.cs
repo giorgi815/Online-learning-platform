@@ -29,13 +29,13 @@ namespace OLP.Application.Services
 
         public async Task<CourseCategoryResponseDto> CreateCategoryAsync(CreateCourseCategoryDto dto)
         {
-            if(dto is null)
+            if (dto is null)
                 throw new BadRequestException(nameof(dto));
 
-            if(string.IsNullOrWhiteSpace(dto.Name))
+            if (string.IsNullOrWhiteSpace(dto.Name))
                 throw new BadRequestException("Category name cannot be empty.");
 
-            if(await _courseCategoryRepository.ExistsAsync(c => c.Name == dto.Name))
+            if (await _courseCategoryRepository.ExistsAsync(c => c.Name == dto.Name))
                 throw new ConflictException($"Category with name {dto.Name} already exists.");
 
             var category = _mapper.Map<CourseCategory>(dto);
@@ -54,7 +54,7 @@ namespace OLP.Application.Services
             if (category is null)
                 throw new NotFoundException($"Category with ID {categoryId} not found.");
 
-            if(await _courseRepository.ExistsAsync(c => c.CategoryId == categoryId))
+            if (await _courseRepository.ExistsAsync(c => c.CategoryId == categoryId))
                 throw new ConflictException("Cannot delete category with associated courses.");
 
             _courseCategoryRepository.Remove(category);
@@ -65,7 +65,7 @@ namespace OLP.Application.Services
         public async Task<IEnumerable<CourseCategoryResponseDto>> GetAllCategoriesAsync()
         {
             var cached = await _cache.GetAsync<List<CourseCategoryResponseDto>>(CategoryListKey);
-            if(cached is not null) return cached;
+            if (cached is not null) return cached;
 
             var (items, _) = await _courseCategoryRepository.GetAllAsync();
             var result = _mapper.Map<List<CourseCategoryResponseDto>>(items);
@@ -75,16 +75,19 @@ namespace OLP.Application.Services
         }
 
         public async Task<CourseCategoryResponseDto> GetCategoryByIdAsync(Guid categoryId)
-            => _mapper.Map<CourseCategoryResponseDto>(await _courseCategoryRepository.GetAsync(c => c.Id == categoryId));
+            => _mapper.Map<CourseCategoryResponseDto>(ServiceChecks.Found(
+                await _courseCategoryRepository.GetAsync(c => c.Id == categoryId, tracking: false),
+                "Category"));
 
         public async Task<CourseCategoryResponseDto> UpdateCategoryAsync(Guid categoryId, UpdateCourseCategoryDto dto)
         {
-            var category = await _courseCategoryRepository.GetAsync(c => c.Id == categoryId);
+            var category = ServiceChecks.Found(
+                await _courseCategoryRepository.GetAsync(c => c.Id == categoryId), "Category");
 
-            if(string.IsNullOrWhiteSpace(dto.Name))
+            if (string.IsNullOrWhiteSpace(dto.Name))
                 throw new BadRequestException("Category name cannot be empty.");
 
-            if(await _courseCategoryRepository.ExistsAsync(x => x.Id != categoryId && x.Name == dto.Name))
+            if (await _courseCategoryRepository.ExistsAsync(x => x.Id != categoryId && x.Name == dto.Name))
                 throw new ConflictException($"Category with name {dto.Name} already exists.");
 
             _mapper.Map(dto, category);

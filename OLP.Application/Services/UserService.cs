@@ -25,7 +25,7 @@ namespace OLP.Application.Services
             _files = files;
             _mapper = mapper;
         }
-        
+
         public async Task<IEnumerable<UserResponseDto>> GetAllUsersAsync()
         {
             var (items, _) = await _profiles.GetAllAsync(tracikng: false);
@@ -37,8 +37,8 @@ namespace OLP.Application.Services
 
         public Task<IEnumerable<UserResponseDto>> GetTeachersAsync() => ByRole("Teacher");
 
-        public async Task<UserResponseDto> GetUserByIdAsync(Guid userId) 
-            =>_mapper.Map<UserResponseDto>(ServiceChecks.Found
+        public async Task<UserResponseDto> GetUserByIdAsync(Guid userId)
+            => _mapper.Map<UserResponseDto>(ServiceChecks.Found
                 (await _profiles.GetAsync(
                     u => u.Id == userId,
                     tracking: false), "User"));
@@ -64,7 +64,7 @@ namespace OLP.Application.Services
             return _mapper.Map<UserResponseDto>(user);
         }
 
-        public async Task<UserResponseDto> UpdateprofilAsync(Guid userId, UpdateAvatarDto dto)
+        public async Task<UserResponseDto> UpdateProfileAsync(Guid userId, UpdateUserDto dto)
         {
             var user = ServiceChecks.Found(await _profiles.GetAsync(u => u.Id == userId), "User");
 
@@ -78,7 +78,7 @@ namespace OLP.Application.Services
         public async Task<UserResponseDto> UploadAvatarAsync(Guid userId, Stream content, string fileName)
         {
             var extension = Path.GetExtension(fileName).ToLowerInvariant();
-            
+
             ServiceChecks.Require(extension is ".png" or ".jpg" or ".jpeg", "Image required.");
 
             var user = ServiceChecks.Found(await _profiles.GetAsync(u => u.Id == userId), "User");

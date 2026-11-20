@@ -22,6 +22,8 @@ namespace OLP.Infrastructure.Data
         public DbSet<LessonProgress> LessonProgresses { get; set; }
         public DbSet<CourseCategory> CourseCategories { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<Certificate> Certificates { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -2,6 +2,8 @@
 using OLP.Application.Contracts.Persistence;
 using OLP.Application.Contracts.Services;
 using OLP.Application.DTOs.Assignment;
+using OLP.Application.Exceptions;
+using OLP.Domain.Enums;
 using OLP.Domain.Entities;
 
 namespace OLP.Application.Services
@@ -10,14 +12,17 @@ namespace OLP.Application.Services
     {
         private readonly IAssignmentRepository _assignmentRepository;
         private readonly ICourseRepository _courseRepository;
+        private readonly IEnrollmentRepository _enrollments;
         private readonly IMapper _mapper;
 
         public AssignmentService(IAssignmentRepository assignmentRepository,
             ICourseRepository courseRepository,
+            IEnrollmentRepository enrollments,
             IMapper mapper)
         {
             _assignmentRepository = assignmentRepository;
             _courseRepository = courseRepository;
+            _enrollments = enrollments;
             _mapper = mapper;
         }
 
@@ -39,26 +44,37 @@ namespace OLP.Application.Services
 
         public async Task DeleteAssignmentAsync(Guid assignmentId, Guid teacherId)
         {
-            var assignment = ServiceChecks.Found(_assignmentRepository.GetAsync(a => a.Id == assignmentId).Result, "Assignment");
+            var assignment = ServiceChecks.Found(await _assignmentRepository.GetAsync(a => a.Id == assignmentId), "Assignment");
             await CheckOwner(assignment.CourseId, teacherId);
 
             _assignmentRepository.Remove(assignment);
             await _assignmentRepository.SaveAsync();
         }
 
-        public async Task<IEnumerable<AssignmentResponseDto>> GetAllAssignmentsAsync()
+        public async Task<AssignmentResponseDto> GetAssignmentByIdAsync(Guid assignmentId, Guid actorId)
         {
-            var (items, _) = await _assignmentRepository.GetAllAsync(tracikng: false);
+            var assignment = ServiceChecks.Found(await _assignmentRepository.GetAsync(
+                a => a.Id == assignmentId, tracking: false), "Assignment");
+            await CheckAccess(assignment.CourseId, actorId);
+            return _mapper.Map<AssignmentResponseDto>(assignment);
+        }
+
+        public async Task<IEnumerable<AssignmentResponseDto>> GetAssignmentsByCourseAsync(Guid courseId, Guid actorId)
+        {
+            await CheckAccess(courseId, actorId);
+            var (items, _) = await _assignmentRepository.GetAllAsync(
+                filter: a => a.CourseId == courseId, tracikng: false);
             return _mapper.Map<IEnumerable<AssignmentResponseDto>>(items);
         }
 
-        public async Task<AssignmentResponseDto> GetAssignmentByIdAsync(Guid assignmentId)
-            => _mapper.Map<AssignmentResponseDto>(ServiceChecks.Found(await _assignmentRepository.GetAsync(a => a.Id == assignmentId, tracking: false), "Assignment"));
-
-        public async Task<IEnumerable<AssignmentResponseDto>> GetAssignmentsByCourseAsync(Guid courseId)
+        private async Task CheckAccess(Guid courseId, Guid actorId)
         {
-            var (items, _) = await _assignmentRepository.GetAllAsync(filter: a => a.CourseId == courseId, tracikng: false);
-            return _mapper.Map<IEnumerable<AssignmentResponseDto>>(items);
+            var course = ServiceChecks.Found(await _courseRepository.GetAsync(
+                c => c.Id == courseId, tracking: false), "Course");
+            if (course.TeacherId != actorId &&
+                (course.Status != CourseStatus.Published ||
+                 !await _enrollments.ExistsAsync(e => e.CourseId == courseId && e.StudentId == actorId)))
+                throw new ForbiddenException("Course enrollment or ownership required.");
         }
 
         public async Task<AssignmentResponseDto> UpdateAssignmentAsync(Guid assignmentId, UpdateAssignmentDto dto, Guid teacherId)

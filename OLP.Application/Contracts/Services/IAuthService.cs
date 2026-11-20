@@ -5,9 +5,9 @@ namespace OLP.Application.Contracts.Services
 {
     public interface IAuthService
     {
-        Task<AuthResponseDto> RegisterStudentAsync(RegisterDto dto);
+        Task<RegistrationResponseDto> RegisterStudentAsync(RegisterDto dto);
 
-        Task<AuthResponseDto> RegisterTeacherAsync(RegisterDto dto);
+        Task<RegistrationResponseDto> RegisterTeacherAsync(RegisterDto dto);
 
         Task<AuthResponseDto> LoginAsync(LoginDto dto);
 

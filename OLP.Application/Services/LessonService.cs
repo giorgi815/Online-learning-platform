@@ -39,7 +39,7 @@ namespace OLP.Application.Services
         {
             await CheckOwner(dto.CourseId, teacherId);
 
-            if(await _lessonRepository.ExistsAsync(l => l.CourseId == dto.CourseId && l.OrderIndex == dto.OrderIndex))
+            if (await _lessonRepository.ExistsAsync(l => l.CourseId == dto.CourseId && l.OrderIndex == dto.OrderIndex))
                 throw new ConflictException("Lesson order is already used.");
 
             var lesson = _mapper.Map<Lesson>(dto);
@@ -50,18 +50,12 @@ namespace OLP.Application.Services
 
         public async Task DeleteLessonAsync(Guid lessonId, Guid teacherId)
         {
-            var lesson = ServiceChecks.Found(_lessonRepository.GetAsync(l => l.Id == lessonId).Result, "Lesson");
-            
+            var lesson = ServiceChecks.Found(await _lessonRepository.GetAsync(l => l.Id == lessonId), "Lesson");
+
             await CheckOwner(lesson.CourseId, teacherId);
             _lessonRepository.Remove(lesson);
 
             await _lessonRepository.SaveAsync();
-        }
-
-        public async Task<IEnumerable<LessonResponseDto>> GetAllLessonsAsync()
-        {
-            var (items, _) = await _lessonRepository.GetAllAsync(tracikng: false);
-            return _mapper.Map<IEnumerable<LessonResponseDto>>(items);
         }
 
         public async Task<IEnumerable<LessonResponseDto>> GetLessonByCourseAsync(Guid courseId, Guid actorId)
@@ -88,7 +82,7 @@ namespace OLP.Application.Services
             var lesson = ServiceChecks.Found(await _lessonRepository.GetAsync(l => l.Id == lessonId), "Lesson");
             await CheckOwner(lesson.CourseId, teacherId);
 
-            if(await _lessonRepository.ExistsAsync(l => l.CourseId == lesson.CourseId && l.Id != lessonId && l.OrderIndex == dto.OrderIndex))
+            if (await _lessonRepository.ExistsAsync(l => l.CourseId == lesson.CourseId && l.Id != lessonId && l.OrderIndex == dto.OrderIndex))
                 throw new ConflictException("Lesson order is already used.");
 
             _mapper.Map(dto, lesson);
@@ -99,11 +93,11 @@ namespace OLP.Application.Services
         public async Task<LessonResponseDto> UploadAttachmentAsync(Guid lessonId, Guid teacherId, Stream content, string fileName)
         {
             var lesson = ServiceChecks.Found(await _lessonRepository.GetAsync(l => l.Id == lessonId), "Lesson");
-            
+
             await CheckOwner(lesson.CourseId, teacherId);
-            
+
             var key = await _files.UploadAsync(content, fileName);
-            
+
             lesson.Attachments.Add(key);
             await _lessonRepository.SaveAsync();
             return _mapper.Map<LessonResponseDto>(lesson);
@@ -113,14 +107,14 @@ namespace OLP.Application.Services
         {
             var lesson = ServiceChecks.Found(await _lessonRepository.GetAsync(l => l.Id == lessonId, tracking: false), "Lesson");
             var course = ServiceChecks.Found(await _courseRepository.GetAsync(c => c.Id == lesson.CourseId, tracking: false), "Course");
-            
+
             if (course.TeacherId != actorId && (course.Status != CourseStatus.Published ||
                 !await _enrollments.ExistsAsync(e => e.CourseId == course.Id && e.StudentId == actorId)))
                 throw new ForbiddenException("Course access required.");
-            
+
             if (!lesson.Attachments.Contains(key))
                 throw new NotFoundException("Attachment not found.");
-            
+
             return await _files.OpenReadAsync(key);
         }
 

@@ -33,7 +33,6 @@ namespace OLP.Application
             services.AddScoped<ICertificateService, CertificateService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<ICacheService, RedisCacheService>();
-            services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IRefreshTokenStore, RedisRefreshTokenStore>();
             services.AddScoped<IEmailService, EmailService>();
             services.AddScoped<IFileStorageService, FileStorageService>();

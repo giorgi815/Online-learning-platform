@@ -30,13 +30,13 @@ namespace OLP.Application.Services
         public async Task<ReviewResponseDto> CreateReviewAsync(CreateReviewDto dto, Guid studentId)
         {
             Validate(dto.Rating);
-            if(!await _courses.ExistsAsync(c => c.Id == dto.CourseId)) 
+            if (!await _courses.ExistsAsync(c => c.Id == dto.CourseId))
                 throw new NotFoundException("Course not found.");
 
-            if(!await _enrollments.ExistsAsync(e => e.CourseId == dto.CourseId && e.StudentId == studentId))
+            if (!await _enrollments.ExistsAsync(e => e.CourseId == dto.CourseId && e.StudentId == studentId))
                 throw new ForbiddenException("Enroll before reviewing.");
 
-            if(await _reviews.ExistsAsync(r => r.CourseId == dto.CourseId && r.StudentId == studentId))
+            if (await _reviews.ExistsAsync(r => r.CourseId == dto.CourseId && r.StudentId == studentId))
                 throw new ConflictException("Course already reviewed.");
 
             var entity = _mapper.Map<Domain.Entities.Review>(dto);
@@ -50,7 +50,7 @@ namespace OLP.Application.Services
 
         public async Task DeleteReviewAsync(Guid reviewId, Guid studentId)
         {
-            var entity = ServiceChecks.Found(_reviews.GetAsync(r => r.Id == reviewId).Result, "Review");
+            var entity = ServiceChecks.Found(await _reviews.GetAsync(r => r.Id == reviewId), "Review");
             ServiceChecks.Owner(entity.StudentId, studentId);
 
             _reviews.Remove(entity);
@@ -63,7 +63,7 @@ namespace OLP.Application.Services
 
             var ratings = items.Select(r => r.Rating);
 
-            return ratings.Any() ?  ratings.Average() : 0;
+            return ratings.Any() ? ratings.Average() : 0;
 
         }
 
