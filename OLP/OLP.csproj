@@ -38,8 +38,4 @@
     <ProjectReference Include="..\OLP.Infrastructure\OLP.Infrastructure.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Controllers\" />
-  </ItemGroup>
-
 </Project>
