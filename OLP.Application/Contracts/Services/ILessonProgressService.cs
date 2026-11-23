@@ -14,5 +14,7 @@ namespace OLP.Application.Contracts.Services
         Task<double> GetCourseProgressAsync(Guid studentId, Guid courseId);
 
         Task<bool> IsLessonCompletedAsync(Guid lessonId, Guid studentId);
+
+        Task MarkCompleteByTeacherAsync(Guid lessonId, Guid studentId, Guid teacherId);
     }
 }

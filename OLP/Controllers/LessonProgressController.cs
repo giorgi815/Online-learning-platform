@@ -1,12 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OLP.Application.Contracts.Services;
+using OLP.Application.DTOs.Lesson;
+using OLP.Application.Services;
 using OLP.Security;
 
 namespace OLP.Controllers
 {
+    [Authorize]
     [ApiController]
-    [Authorize(Roles = "Student")]
     [Route("api/progress")]
     public sealed class LessonProgressController : ControllerBase
     {
@@ -22,22 +24,6 @@ namespace OLP.Controllers
         }
 
 
-        [HttpPut("lessons/{lessonId:guid}/complete")]
-        public async Task<IActionResult> Complete(Guid lessonId)
-        {
-            await _progress.MarkLessonCompletedAsync(lessonId, await _current.ProfileIdAsync());
-
-            return NoContent();
-        }
-
-        [HttpPut("lessons/{lessonId:guid}/incomplete")]
-        public async Task<IActionResult> Incomplete(Guid lessonId)
-        {
-            await _progress.MarkLessonInCompleteAsync(lessonId, await _current.ProfileIdAsync());
-
-            return NoContent();
-        }
-
         [HttpGet("courses/{courseId:guid}/lessons")]
         public async Task<IActionResult> ByCourse(Guid courseId)
             => Ok(await _progress.GetStudentProgressAsync(await _current.ProfileIdAsync(), courseId));
@@ -51,5 +37,22 @@ namespace OLP.Controllers
         [HttpGet("lessons/{lessonId:guid}/completed")]
         public async Task<IActionResult> IsCompleted(Guid lessonId)
             => Ok(new { completed = await _progress.IsLessonCompletedAsync(lessonId, await _current.ProfileIdAsync()) });
+
+        [HttpPost("complete-by-teacher")]
+        [Authorize(Roles = "Teacher")]
+        public async Task<IActionResult> CompleteByTeacher([FromBody] MarkLessonCompleteDto dto)
+        {
+            var teacherId = await _current.ProfileIdAsync();
+
+            await _progress.MarkCompleteByTeacherAsync(
+                dto.LessonId,
+                dto.StudentId,
+                teacherId);
+
+            return Ok(new
+            {
+                message = "Lesson marked as completed successfully."
+            });
+        }
     }
 }

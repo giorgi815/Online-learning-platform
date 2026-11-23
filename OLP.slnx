@@ -2,5 +2,6 @@
   <Project Path="OLP.Application/OLP.Application.csproj" />
   <Project Path="OLP.Domain/OLP.Domain.csproj" />
   <Project Path="OLP.Infrastructure/OLP.Infrastructure.csproj" />
+  <Project Path="OLP.Test/OLP.Test.csproj" Id="e29d5026-7158-4239-b371-b70d40fa9a45" />
   <Project Path="OLP/OLP.csproj" />
 </Solution>

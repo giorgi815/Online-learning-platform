@@ -12,15 +12,18 @@ namespace OLP.Application.Services
         private readonly ILessonProgressRepository _progress;
         private readonly ILessonRepository _lessons;
         private readonly IEnrollmentRepository _enrollments;
+        private readonly ICourseRepository _courses;
         private readonly IMapper _mapper;
 
         public LessonProgressService(ILessonProgressRepository lessonProgressRepository,
             ILessonRepository lessonRepository,
+            ICourseRepository courses,
             IEnrollmentRepository enrollmentRepository,
             IMapper mapper)
         {
             _progress = lessonProgressRepository;
             _lessons = lessonRepository;
+            _courses = courses;
             _enrollments = enrollmentRepository;
             _mapper = mapper;
         }
@@ -75,6 +78,49 @@ namespace OLP.Application.Services
 
             entity.IsCompleted = false;
             entity.CompletedAt = null;
+
+            await _progress.SaveAsync();
+        }
+
+        public async Task MarkCompleteByTeacherAsync(Guid lessonId, Guid studentId, Guid teacherId)
+        {
+            var lesson = ServiceChecks.Found(
+                await _lessons.GetAsync(l => l.Id == lessonId),
+                "Lesson");
+
+            var course = ServiceChecks.Found(
+                await _courses.GetAsync(c => c.Id == lesson.CourseId),
+                "Course");
+
+            if (course.TeacherId != teacherId)
+                throw new ForbiddenException(
+                    "You are not the teacher of this course.");
+
+            bool isEnrolled = await _enrollments.ExistsAsync(
+                e => e.CourseId == course.Id &&
+                     e.StudentId == studentId);
+
+            if (!isEnrolled)
+                throw new ForbiddenException(
+                    "Student is not enrolled in this course.");
+
+            var progress = await _progress.GetAsync(
+                p => p.LessonId == lessonId &&
+                     p.StudentId == studentId);
+
+            if (progress == null)
+            {
+                progress = new LessonProgress
+                {
+                    LessonId = lessonId,
+                    StudentId = studentId
+                };
+
+                await _progress.AddAsync(progress);
+            }
+
+            progress.IsCompleted = true;
+            progress.CompletedAt = DateTime.UtcNow;
 
             await _progress.SaveAsync();
         }

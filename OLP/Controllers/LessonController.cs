@@ -71,9 +71,30 @@ namespace OLP.Controllers
             if (string.IsNullOrWhiteSpace(key))
                 return BadRequest("File key required.");
 
-            var stream = await _lessons.OpenAttachmentAsync(id, await _current.ProfileIdAsync(), key);
-            
-            return File(stream, "application/octet-stream", "lesson-attachment", enableRangeProcessing: true);
+            var stream = await _lessons.OpenAttachmentAsync(
+                id,
+                await _current.ProfileIdAsync(),
+                key);
+
+            var contentType = Path.GetExtension(key).ToLowerInvariant() switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".webp" => "image/webp",
+                ".gif" => "image/gif",
+                ".pdf" => "application/pdf",
+                ".txt" => "text/plain",
+                ".zip" => "application/zip",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                _ => "application/octet-stream"
+            };
+
+            return File(
+                stream,
+                contentType,
+                Path.GetFileName(key),
+                enableRangeProcessing: true);
         }
     }
 }
