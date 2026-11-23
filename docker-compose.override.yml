@@ -1,14 +1,30 @@
+
 services:
   olp:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__DefaultConnection: ${OLP_SQL_CONNECTION_STRING}
-      ConnectionStrings__Redis: redis:6379
+
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=OLP;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379"
+
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: OLP
+      Jwt__Audience: OLP
+
+      Admin__Email: ${ADMIN_EMAIL}
+      Admin__Password: ${ADMIN_PASSWORD}
+
+      Email__Host: ${EMAIL_HOST:-smtp.gmail.com}
+      Email__Port: ${EMAIL_PORT:-465}
+      Email__SenderEmail: ${EMAIL_SENDER}
+      Email__Username: ${EMAIL_USERNAME}
+      Email__Password: ${EMAIL_PASSWORD}
+
+      Files__Root: /app/data/files
+
+      Api__BaseUrl: "http://localhost:8088"
+      Frontend__BaseUrl: "http://localhost:4200"
 
     ports:
       - "8088:8080"
-
-    volumes:
-      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
-      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro

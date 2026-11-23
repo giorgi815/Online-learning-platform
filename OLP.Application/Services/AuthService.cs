@@ -242,22 +242,28 @@ namespace OLP.Application.Services
 
         private string BuildEmailLink(string route, Guid accountId, string token)
         {
-            var origin = _configuration["Api:BaseUrl"]
-                ?? throw new InvalidOperationException("Frontend URL missing.");
-            var encodedToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(token));
-            var url = QueryHelpers.AddQueryString(origin.TrimEnd('/') + route,
+            var frontendUrl = _configuration["Frontend:BaseUrl"]
+                ?? throw new InvalidOperationException(
+                    "Frontend URL is missing.");
+
+            var encodedToken = WebEncoders.Base64UrlEncode(
+                Encoding.UTF8.GetBytes(token));
+
+            var url = QueryHelpers.AddQueryString(
+                frontendUrl.TrimEnd('/') + route,
                 new Dictionary<string, string?>
                 {
                     ["userId"] = accountId.ToString(),
                     ["token"] = encodedToken
                 });
+
             return HtmlEncoder.Default.Encode(url);
         }
 
         private async Task SendConfirmationAsync(ApplicationUser account)
         {
             var token = await _users.GenerateEmailConfirmationTokenAsync(account);
-            var link = BuildEmailLink("/api/auth/confirm-email", account.Id, token);
+            var link = BuildEmailLink("/confirm-email", account.Id, token);
             await _emailService.SendEmailAsync(account.Email!, "Confirm your OLP email",
                 $"<p>Confirm your email:</p><a href=\"{link}\">Confirm email</a>");
         }
