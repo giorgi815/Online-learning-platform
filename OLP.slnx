@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
   <Project Path="OLP.Application/OLP.Application.csproj" />
   <Project Path="OLP.Domain/OLP.Domain.csproj" />
   <Project Path="OLP.Infrastructure/OLP.Infrastructure.csproj" />

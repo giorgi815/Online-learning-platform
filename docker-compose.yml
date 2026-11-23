@@ -1,0 +1,74 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: olp-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: olp-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: olp-api
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      # Must stay "Development": migrations, Swagger and the payment services
+      # are only enabled in Development in Program.cs.
+      ASPNETCORE_ENVIRONMENT: Development
+
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=OLP;User Id=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      ConnectionStrings__Redis: "redis:6379"
+
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: OLP
+      Jwt__Audience: OLP
+
+      Admin__Email: ${ADMIN_EMAIL}
+      Admin__Password: ${ADMIN_PASSWORD}
+
+      Email__Host: ${EMAIL_HOST}
+      Email__Port: ${EMAIL_PORT}
+      Email__SenderEmail: ${EMAIL_SENDER}
+      Email__Password: ${EMAIL_PASSWORD}
+
+      Files__Root: /app/data/files
+      Api__BaseUrl: ${API_BASE_URL}
+      Frontend__BaseUrl: ${FRONTEND_BASE_URL}
+    volumes:
+      - uploads:/app/data/files
+    restart: unless-stopped
+
+volumes:
+  sqldata:
+  redisdata:
+  uploads:

@@ -1,0 +1,14 @@
+services:
+  olp:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__DefaultConnection: ${OLP_SQL_CONNECTION_STRING}
+      ConnectionStrings__Redis: redis:6379
+
+    ports:
+      - "8088:8080"
+
+    volumes:
+      - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
+      - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
