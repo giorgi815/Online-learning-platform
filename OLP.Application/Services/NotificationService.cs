@@ -1,4 +1,5 @@
 ﻿using MapsterMapper;
+using Microsoft.AspNetCore.Identity;
 using OLP.Application.Contracts.Persistence;
 using OLP.Application.Contracts.Services;
 using OLP.Application.DTOs.Notification;
@@ -11,27 +12,44 @@ namespace OLP.Application.Services
     {
         private readonly INotificationRepository _notifications;
         private readonly IUserRepository _profiles;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly IMapper _mapper;
 
         public NotificationService(INotificationRepository notificationRepository,
             IUserRepository userRepository,
+            UserManager<ApplicationUser> userManager,
             IMapper mapper)
         {
             _notifications = notificationRepository;
+            _userManager = userManager;
             _profiles = userRepository;
             _mapper = mapper;
         }
 
         public async Task<NotificationResponseDto> CreateNotificationAsync(CreateNotificationDto dto)
         {
-            if (!await _profiles.ExistsAsync(u => u.Id == dto.UserId))
-                throw new NotFoundException("User not found.");
+            var email = dto.Email.Trim();
+            var account = await _userManager.FindByEmailAsync(email);
+            if (account is null)
+                throw new NotFoundException("Recipient user not found.");
 
-            var entity = _mapper.Map<Notification>(dto);
-            await _notifications.AddAsync(entity);
+            var profile = await _profiles.GetAsync(
+                u => u.ApplicationUserId == account.Id,
+                tracking: false);
+            if (profile is null)
+                throw new NotFoundException("Recipient profile not found.");
+
+            var notification = new Notification
+            {
+                UserId = profile.Id,
+                Title = dto.Title,
+                Message = dto.Message
+            };
+
+            await _notifications.AddAsync(notification);
             await _notifications.SaveAsync();
 
-            return _mapper.Map<NotificationResponseDto>(entity);
+            return _mapper.Map<NotificationResponseDto>(notification);
         }
 
         public async Task DeleteNotificationAsync(Guid notificationId, Guid userId)

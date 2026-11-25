@@ -5,8 +5,10 @@ namespace OLP.Application.DTOs.Notification
 {
     public class CreateNotificationDto
     {
-        [NotEmptyGuid]
-        public Guid UserId { get; set; }
+        [Required]
+        [EmailAddress]
+        [StringLength(256)]
+        public string Email { get; set; } = string.Empty;
 
         [Required]
         [StringLength(150, MinimumLength = 3)]
